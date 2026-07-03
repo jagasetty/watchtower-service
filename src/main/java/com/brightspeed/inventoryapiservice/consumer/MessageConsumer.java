@@ -1,0 +1,133 @@
+package com.brspd.iwg.consumer;
+
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Date;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.annotation.Bean;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+
+import com.brspd.iwg.dto.KafkaPayload;
+import com.brspd.iwg.dto.Response;
+import com.brspd.iwg.service.OMIWGService;
+
+
+
+@Component
+public class MessageConsumer {
+
+    @Value("${brightspeed.api.time.interval:}")
+    private Long interval;
+    
+    @Value("${brightspeed.api.time.interval.24:}")
+    private Long interval_24;
+	
+	@Autowired
+	private OMIWGService oMIWGService;
+	
+
+    
+    private static final Logger LOGGER = Logger.getLogger("MessageConsumer");
+ // activation queue
+    private final Queue<KafkaPayload> activationQueue = new ConcurrentLinkedQueue<>();
+    private final Queue<KafkaPayload> activation24Queue = new ConcurrentLinkedQueue<>();
+    @Bean
+    public java.util.function.Consumer<Message<KafkaPayload>> sendEnableStatus() {
+        LOGGER.log(Level.INFO, "Inside the sendEnableStatus  funtion before input ");
+        return input -> {
+            LOGGER.log(Level.INFO, "Inside the sendEnableStatus funtion{0} ", input.getPayload());
+
+            MessageHeaders headers = input.getHeaders();
+            //String key = headers.get("kafka_receivedMessageKey").toString();
+            KafkaPayload value = input.getPayload();
+            LOGGER.log(Level.INFO, "Karka Req received for Subscriber "+value.getSubscriberId()+", "
+					+ ", retryCount: {}", value.getRetryCount());
+
+            activationQueue.add(value);
+
+            // activation24Queue.add(value);
+			boolean newSubscriber = true;	
+			String subScriberId = value.getSubscriberId(); 
+            for(KafkaPayload elmnt : activation24Queue) {
+            	String subId = elmnt.getSubscriberId();
+                if(StringUtils.equals(subId, subScriberId)) {
+                	newSubscriber = false;
+					LOGGER.log(Level.INFO, "SubscriberId "+subScriberId+", "
+							+ "already available in the queue with retryCount: {}", elmnt.getRetryCount());
+                	break;
+                }
+            }
+            if(newSubscriber == true) {
+            	activation24Queue.add(value);	
+            }
+           
+        };
+    }
+        
+        @Scheduled(fixedRate = 60000)
+        public void processDeactivation() {
+            long limitInMinutes = interval;
+            try {
+               // System.out.println("Checking for users enabled for " + limitInMinutes + "minutes...");
+                while (!activationQueue.isEmpty()) {
+                    KafkaPayload value = activationQueue.peek();
+                    LocalDateTime now = LocalDateTime.now();
+                    long elapsedMinutes = Duration.between(value.getTimestamp(), now).toMinutes();
+                    //System.out.println("value"+value);
+                    //change after test
+					
+                    if (elapsedMinutes >= limitInMinutes) {
+                        activationQueue.poll();
+                        LOGGER.log(Level.INFO, "Deactivating user: {} "+ value.getSubscriberId());
+    					LOGGER.log(Level.INFO, "Deactivating user: retryCount "+ value.getRetryCount());
+						Response response = oMIWGService.blockInternet(value.getSubscriberId(), value.getBan(), value.getRetryCount());
+                    }  else {
+                        break;
+                    }
+                }
+	            while (!activation24Queue.isEmpty()) {
+	                KafkaPayload value = activation24Queue.peek();
+	                LocalDateTime now = LocalDateTime.now();
+	                LOGGER.log(Level.INFO,"now "+ now);
+	                LOGGER.log(Level.INFO,"value.getTimestamp() "+ value.getTimestamp());
+	                long elapsedMinutes = Duration.between(value.getTimestamp(), now).toMinutes();
+	                //System.out.println("value"+value);
+	                //change after test
+	                long elapsedMinutes10 = Duration.between(value.getTimestamp(), now).toMinutes();
+					long elapsedHours = Duration.between(value.getTimestamp(), now).toHours();
+					System.out.println("elapsed minutes 10 "+ elapsedMinutes10);
+					
+					System.out.println("elapsed hours"+elapsedHours);
+					LOGGER.log(Level.INFO,"interval_24 "+interval_24);
+					LOGGER.log(Level.INFO,"elapsedMinutes10 "+elapsedMinutes10);
+					
+	               if (elapsedMinutes10 >= interval_24) {
+	                	activation24Queue.poll();
+						LOGGER.log(Level.INFO, "Reactivating user after 24 hrs in service now: {} "+ value.getSubscriberId());
+	                    LOGGER.log(Level.INFO, "Reactivating user in service now: {}", value.getSubscriberId());
+	                    LOGGER.log(Level.INFO, "Reactivating user retryCount: {}", value.getRetryCount());
+	                    LOGGER.log(Level.INFO,"ban ", value.getBan());
+						Response response = oMIWGService.unblockInternet24(value.getSubscriberId(), value.getBan(), value.getRetryCount());
+	                } else {
+	                    break;
+	                }
+	             }
+            
+            } catch (Exception ex) {
+                LOGGER.log(Level.INFO, "*** Error processing deactivation: {}", ex.getMessage());
+            }
+        }
+		
+    
+}
