@@ -1,0 +1,211 @@
+# Default values for bts-chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+appName: "usilethernetorderservice"
+appEnv: "dev"
+replicaCount: 1
+
+image:
+  repository: "us-docker.pkg.dev/dvop-art-pr/app-usl-cnn-dv"
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "tagversion"
+
+imagePullSecrets:
+  - name: regcred
+nameOverride: ""
+fullnameOverride: ""
+
+# Use this section for service.yaml
+service:
+  type: ClusterIP
+  port: 8080
+  name: http
+  targetPort: 8080
+
+# Use this section for Nginx ingress.yaml
+  appProtocol: HTTP
+ingress:
+  ingressClassName: nginx
+  enabled: false
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: boss-services.usil.dv-gcp.brtspd.co
+      paths:
+        - path: /ethernet(/|$)(.*)
+          pathType: Prefix
+  tls:
+    - secretName: boss-services-usl-tls
+      hosts:
+        - boss-services.usil.dv-gcp.brtspd.co
+
+# Use this section for the Deployment.yaml
+deployment:
+  code:
+    ports:
+      - name: http
+        containerPort: 8080
+        protocol: TCP
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 50m
+        memory: 100Mi
+    command:
+      - java
+    args:
+      - -jar
+      - -Dspring.profiles.active=dev
+      - /opt/tmp/usilethernetorderservice/usilethernetorderservice.jar
+configmapCreation:
+  ### if you want to create configmap object for each config files in your repo ,
+  ### place your files in the config/ directory and enable the configmap creation.
+  enabled: false
+app:
+  # App Environment Variables
+  fromEnv:
+    envVars:
+      - name: PORT
+        value: "8080"
+      - name: SPRING_PROFILES_ACTIVE
+        value: dev
+
+ ## NOTE: There are three methods of using config map in the deployments
+ ### method 1: as env variables and include parts of configmap/secrets (hand pick specific key value pairs) inside the env
+ ### method 2: injecting the entire configmap/secret (all key values pairs) inside the env
+ ### method 3: add configmap/secret as volumemounts
+
+##### method 1: as env variables and include parts of configmap/secrets (hand pick specific key value pairs) inside the env ############
+
+  # App ConfigMap Variables
+  fromConfigMap:
+    envVars: []
+      # - configName: digital-cart-application-dev.properties   ## this variable must use the configmap k8s object name already created in the cluster
+      #   name: EXAMPLE_CONFIGMAP_ENV  ## this variable is to create the env for the configmap
+      #   key: example          ## the key to fetch the value inside the secret  created
+
+  # App Environment Variables from Secrets
+  fromSecret:
+    envVars: []
+      # - secretName: secret       ## this variable must use the secret k8s object name already created in the cluster
+      #   name: EXAMPLE_SECRET_ENV  ## this variable is to create the env for the secret
+      #   key: example       ## the key to fetch the value inside the secret  created
+  vaultInject:
+    envVars: []
+      # - secretName: vault-secret-1  ## this variable must use the secret k8s object name same as values.vault.vaultSecrets.secretsName
+      #   name: EXAMPLE_SECRET_ENV_FROM_VAULT   ## this variable is to create the env variable for the secret inside the pod
+      #   key: key-stored-in-vault  ## the key to fetch the value inside the secret  created
+
+  ### method 2: injecting the entire configmap/secret (all key values pairs) inside the env
+  #Note:  You must active this option if you need a Volume to mount for the app component
+  envfrom:
+    enabled: true
+
+    ConfigMap:
+      envVars: []
+        # - name: configmap1 ###this variable must use the configmap k8s object name already created in the cluster
+        # - name: configmap2 ###this variable must use the configmap k8s object name already created in the cluster
+
+    Secrets:
+      envVars:
+        - name: dev-secrets ###this variable must use the secret k8s object name already created in the cluster
+        # - name: secret2  ###this variable must use the secret k8s object name already created in the cluster
+
+   ### method 3: add configmap/secret as volumemounts
+
+  # Volumes Configuration
+  volumes:
+    # You must active this option if you need a Volume to mount for the app component
+    # This block is used to declare all volumes that are created for your application
+
+    enabled: false
+
+    mountVolumes:
+      fromSecret: []
+        # - name: test-credentials-app
+        #   CredentialsSecretName: credentials  # this variable must use the secret k8s object name already created in the cluster
+        #   mountPath: /secrets/gcs  #this to specify the mount location inside the pod
+        #   readOnly: false # Update readOnly to true if you don't need write permission
+
+      fromConfigMap: []
+        # - name: config-dev
+        #   configMapName: digital-cart-application-dev.properties # this variable must use the configmap k8s object name already created in the cluster
+        #   mountPath: /config  #this to specify the mount location inside the pod
+        #   readOnly: false # Update readOnly to true if you don't need write permission
+
+      fromPVC: []
+        # - name: pvc1
+        #   PVCName: test3
+        #   mountPath: /secrets/pvc
+        #   readOnly: false # Update readOnly to true if you don't need write permission
+      fromvault: []
+        # - name: secrets-from-vault-csi-driver 
+        #   mountPath: "/mnt/secrets-store" this to specify the mount location inside the pod
+        #   readOnly: true # Update readOnly to true if you don't need write permission
+        #   secretName: vault-secret-1 ## this variable will reference the secret which holds the key and value fetched from vault created by vault CSI driver
+
+      fromEMPTYDIR: []
+        # - name: cloudsql
+        #   mountPath: /cloudsql
+
+vault:
+  enabled: false
+
+  # vaultrole: database # vault k8s authentication role which binds the k8s SA and vault policy
+  # vaultserviceaccount: webapp-sa ###  K8s Service account to do the authentication with vault
+  # secretName: vault-secret-1 ## this is used to create a K8s secret and store the below mentioned keys inside it, so that it can be references inside a pod as env variable or volume
+  # objects: 
+  #   - objectName: db-password ## a symbolic name for that secret, and the file name to write to the pod
+  #     vaultPath: secret/data/db-pass  # path to the secret stored in vault
+  #     secretKey: key-stored-in-vault # is a key name within that secret stored in vault
+gateway:
+  name: shared-internal-gateway-dev
+  namespace: gateway-system
+httpRoute:
+  enabled: true
+  name: usilethernetorderservice-dev
+  annotations: {}
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: shared-internal-gateway-dev
+      namespace: gateway-system
+      sectionName: https-boss-service-usil
+  hostnames:
+    - boss-services.usil.dv-gcp.brtspd.co
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /ethernet/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: usilethernetorderservice-dev
+          port: 8080
+backendTLS:
+  enabled: false
+healthCheckPolicy:
+  enabled: true
+  type: TCP
+  port: 8080
+  checkIntervalSec: 10
+  timeoutSec: 5
+  healthyThreshold: 1
+  unhealthyThreshold: 3
+  logConfig:
+    enabled: true
+gcpBackendPolicy:
+  enabled: true
+  timeoutSec: 120
+  connectionDraining:
+    enabled: true
+    drainingTimeoutSec: 60
