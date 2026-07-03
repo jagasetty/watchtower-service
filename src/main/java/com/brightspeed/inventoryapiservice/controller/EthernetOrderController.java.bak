@@ -1,0 +1,1310 @@
+package com.brightspeed.inventoryapiservice.controller;
+
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.brightspeed.inventoryapiservice.dto.response.ResponseStatus;
+import com.brightspeed.inventoryapiservice.service.EthernetOrderService;
+import com.brightspeed.inventoryapiservice.util.Validator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.annotations.Api;
+import lombok.extern.slf4j.Slf4j;
+
+@CrossOrigin(maxAge = 1800)
+@Validated
+@Slf4j
+@RestController
+@Api(value = "Ethernet Order Controller is s USIL system  provides ethernet inventory services", tags = "ethernet-order-controller")
+public class EthernetOrderController {
+
+	@Autowired
+	private EthernetOrderService ethOrderSrvc;
+	
+	@Autowired
+	private Validator validator;
+
+	@PostMapping(value = "/v1/getEquipmentsByLocation", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> getEquipmentsByLocation(@RequestBody Map<String, Object> assignedInventoryBody) {
+		log.info("=> getEquipmentsByLocation(): START");
+		log.info(" Equipments request by Location: '{}'", assignedInventoryBody.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+
+		if (assignedInventoryBody == null || assignedInventoryBody.isEmpty()) {
+			ResponseStatus badRequestResponse = new ResponseStatus();
+			badRequestResponse.setCode(400);
+			badRequestResponse.setMessage("Bad request: Request body is missing or empty.");
+			return new ResponseEntity<>(badRequestResponse, HttpStatus.BAD_REQUEST);
+		}
+
+		log.info("Equipments request by Location: '{}'", assignedInventoryBody);
+
+		try {
+			responseStatus = ethOrderSrvc.getEquipmentsByLocation(assignedInventoryBody);
+			HttpStatus status;
+			switch (responseStatus.getCode()) {
+			case 200:
+				status = HttpStatus.OK;
+				break;
+			case 204:
+				status = HttpStatus.NO_CONTENT;
+				break;
+			case 400:
+				status = HttpStatus.BAD_REQUEST;
+				break;
+			case 404:
+				status = HttpStatus.NOT_FOUND;
+				break;
+			case 500:
+			default:
+				status = HttpStatus.INTERNAL_SERVER_ERROR;
+				break;
+			}
+
+			log.info("<= getEquipmentsByLocation(): END");
+			return new ResponseEntity<>(responseStatus, status);
+
+		} catch (Exception ex) {
+			log.error("GetEquipmentsByLocation-Caught Exception: '{}'", ex.getMessage());
+
+			responseStatus = new ResponseStatus();
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to get equipment. Reason: " + ex.getMessage());
+
+			return new ResponseEntity<>(responseStatus, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	
+	@PostMapping(value = "/v1/getEquipmentsByLocations", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> getEquipmentsByLocations(@RequestBody List<Map<String, Object>> assignedInventoryList) {
+		log.info("=> getEquipmentsByLocations(): START");
+		log.info(" Equipments request for Locations: '{}'", assignedInventoryList.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+
+		if (assignedInventoryList == null || assignedInventoryList.isEmpty()) {
+			ResponseStatus badRequestResponse = new ResponseStatus();
+			badRequestResponse.setCode(400);
+			badRequestResponse.setMessage("Bad request: Request body is missing or empty.");
+			return new ResponseEntity<>(badRequestResponse, HttpStatus.BAD_REQUEST);
+		}
+		try {
+			responseStatus = ethOrderSrvc.getEquipmentsByLocations(assignedInventoryList);
+			HttpStatus status;
+			switch (responseStatus.getCode()) {
+			case 200:
+				status = HttpStatus.OK;
+				break;
+			case 204:
+				status = HttpStatus.NO_CONTENT;
+				break;
+			case 400:
+				status = HttpStatus.BAD_REQUEST;
+				break;
+			case 404:
+				status = HttpStatus.NOT_FOUND;
+				break;
+			case 500:
+			default:
+				status = HttpStatus.INTERNAL_SERVER_ERROR;
+				break;
+			}
+
+			log.info("<= getEquipmentsByLocations(): END");
+			return new ResponseEntity<>(responseStatus, status);
+
+		} catch (Exception ex) {
+			log.error("GetEquipmentsByLocations-Caught Exception: '{}'", ex.getMessage());
+
+			responseStatus = new ResponseStatus();
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to get equipment. Reason: " + ex.getMessage());
+
+			return new ResponseEntity<>(responseStatus, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@GetMapping("v1/getServiceDesign")
+	public ResponseEntity<?> getServiceDesign(@RequestParam(value = "circuit", required = false) String circuit) {
+		log.info("=>getServiceDesign(): START");
+		log.info("Get Service design : '{}'", circuit);
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setCode(500);
+		responseStatus.setMessage("Failed");
+		HttpStatus httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+
+		try {
+			if (StringUtils.isBlank(circuit)) {
+				String msgStr = "Empty EVC/OVC name is not allowed!.";
+				log.error("Failed: '{}'", msgStr);
+				responseStatus.setCode(HttpStatus.BAD_REQUEST.value());
+				responseStatus.setMessage(msgStr);
+			} else {
+				responseStatus = ethOrderSrvc.getEVCDesign(circuit);
+				switch (responseStatus.getCode()) {
+				case 200:
+					httpStatus = HttpStatus.OK;
+					break;
+				case 204:
+					httpStatus = HttpStatus.NO_CONTENT;
+					break;
+				case 400:
+					httpStatus = HttpStatus.BAD_REQUEST;
+					break;
+				case 404:
+					httpStatus = HttpStatus.NOT_FOUND;
+					break;
+				case 500:
+				default:
+					httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+					break;
+				}
+			}
+		} catch (Exception ex) {
+			log.error("Get Service design-Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed : " + ex.getMessage());
+		}
+		log.info("<=getServiceDesign(): END");
+		return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@GetMapping("v1/getCircuitInfo")
+	public ResponseEntity<?> getCircuitInfo(@RequestParam(value = "circuit", required = false) String circuit,
+			@RequestParam(value = "strictSearch", required = false) boolean strictSearch) {
+		log.info("=>getCircuitInfo(): START");
+		log.info("Get Circuit Info : '{}'", circuit);
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setCode(500);
+		responseStatus.setMessage("Failed");
+		HttpStatus httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+
+		try {
+			if (StringUtils.isBlank(circuit)) {
+				String msgStr = "Empty circuit name is not allowed!.";
+				log.error("Failed: '{}'", msgStr);
+				responseStatus.setCode(HttpStatus.BAD_REQUEST.value());
+				responseStatus.setMessage(msgStr);
+
+			} else {
+				responseStatus = ethOrderSrvc.getCircuitInfo(circuit, strictSearch);
+				switch (responseStatus.getCode()) {
+				case 200:
+					httpStatus = HttpStatus.OK;
+					break;
+				case 204:
+					httpStatus = HttpStatus.NO_CONTENT;
+					break;
+				case 400:
+					httpStatus = HttpStatus.BAD_REQUEST;
+					break;
+				case 404:
+					httpStatus = HttpStatus.NOT_FOUND;
+					break;
+				case 500:
+				default:
+					httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+					break;
+				}
+			}
+		} catch (Exception ex) {
+			log.error("Get circuitInfo-Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed : " + ex.getMessage());
+		}
+		log.info("<=getCircuitInfo(): END");
+	    return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@GetMapping("v1/getServiceToProvision")
+    public ResponseEntity<?> getServiceToProvision(@RequestParam(value = "circuit", required = false) String circuit) {
+		log.info("=>getServiceToProvision(): START");
+		log.info("Get Service design to provision : '{}'", circuit);
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setCode(500);
+		responseStatus.setMessage("Failed");
+
+		try {
+			if (StringUtils.isBlank(circuit)) {
+				String msgStr = "Empty EVC/OVC name is not allowed!.";
+				log.error("Failed: '{}'",msgStr);
+				responseStatus.setCode(HttpStatus.UNPROCESSABLE_ENTITY.value());
+				responseStatus.setMessage(msgStr);
+			}else {
+				responseStatus = ethOrderSrvc.getVCToProvision(circuit);
+			}
+		}catch(Exception ex) {
+			log.error("Get Service design-Caught Exception:- '{}'",ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed : " + ex.getMessage());
+		}
+		log.info("<=getServiceToProvision(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+
+	@GetMapping("v1/isCircuitExist")
+	public ResponseEntity<?> isCircuitExist(@RequestParam(value = "circuitType", required = true) String circuitType,
+			@RequestParam(value = "circuitName", required = true) String circuitName) {
+		log.info("=>isCircuitExist(): START");
+		log.info("Checking circuit : '{}', type '{}'", circuitName, circuitType);
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setCode(500);
+		responseStatus.setMessage("Failed");
+
+		try {
+			if (StringUtils.isBlank(circuitName)) {
+				String msgStr = "Empty Circuit name is not allowed!.";
+				log.error("Failed: '{}'", msgStr);
+				responseStatus.setCode(HttpStatus.BAD_REQUEST.value());
+				responseStatus.setMessage(msgStr);
+			} else if (StringUtils.isBlank(circuitType)) {
+				String msgStr = "Circuit Type cannot  be empty!.";
+				log.error("Failed: '{}'", msgStr);
+				responseStatus.setCode(HttpStatus.BAD_REQUEST.value());
+				responseStatus.setMessage(msgStr);
+			}
+			responseStatus = ethOrderSrvc.isCircuitExist(circuitName, circuitType);
+
+	        HttpStatus httpStatus;
+	        switch (responseStatus.getCode()) {
+	            case 200:
+	                httpStatus = HttpStatus.OK;
+	                break;
+	            case 204:
+	                httpStatus = HttpStatus.NO_CONTENT;
+	                break;
+	            case 400:
+	                httpStatus = HttpStatus.BAD_REQUEST;
+	                break;
+	            case 404:
+	                httpStatus = HttpStatus.NOT_FOUND;
+	                break;
+	            case 500:
+	            default:
+	                httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+	                break;
+	        }
+
+	        return new ResponseEntity<>(responseStatus, httpStatus);
+		} catch (Exception ex) {
+			log.error("Checking for circuit exist-Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed : " + ex.getMessage());
+	        return new ResponseEntity<>(responseStatus, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	
+	@PostMapping(value = "/v1/saveNMIOrder", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> saveNMIOrder(@RequestBody Map<String, Object> orderInfo) {
+		log.info("=> saveNMIOrder(): START");
+		log.info(" Save NMI Order Info : '{}'", orderInfo.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+
+		try {
+			responseStatus = ethOrderSrvc.saveNMIOrderInfo(orderInfo);
+		}catch(Exception ex) {
+			log.error("saveNMIOrder-Caught Exception:- '{}'",ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to save NMI order Reason : " + ex.getMessage());
+		}
+		log.info("<= saveNMIOrder(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+	
+	@GetMapping("v1/getNMIOrderInfo")
+    public ResponseEntity<?> getNMIOrderInfo(@RequestParam(value = "nmiOrderNumber", required = true) String nmiOrderNumber) {
+		log.info("=>getNMIOrderInfo(): START");
+		log.info("Get Order Info for : '{}'", nmiOrderNumber);
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setCode(500);
+		responseStatus.setMessage("Failed");
+
+		try {
+			if (StringUtils.isBlank(nmiOrderNumber)) {
+				String msgStr = "Empty nmiOrderNumber is not allowed!";
+				log.error("Failed: '{}'",msgStr);
+				responseStatus.setCode(HttpStatus.UNPROCESSABLE_ENTITY.value());
+				responseStatus.setMessage(msgStr);
+			}else {
+				responseStatus = ethOrderSrvc.getNMIOrderInfo(nmiOrderNumber);
+			}
+		}catch(Exception ex) {
+			log.error("Get NMIOrder Info -Caught Exception:- '{}'",ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed : " + ex.getMessage());
+		}
+		log.info("<=getNMIOrderInfo(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+		
+	@PostMapping(value = "/v1/saveEthernetOrder", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> saveEthernetOrder(@RequestBody Map<String, Object> orderInfo) {
+		log.info("=> saveEthernetOrder(): START");
+		log.info(" Save Ethernet Order Info : '{}'", orderInfo.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		HttpStatus httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+		responseStatus.setMessage("Failed");
+
+		try {
+			responseStatus = ethOrderSrvc.saveEthernetOrderInfo(orderInfo);
+			switch (responseStatus.getCode()) {
+			case 200:
+				httpStatus = HttpStatus.OK;
+				break;
+			case 204:
+				httpStatus = HttpStatus.NO_CONTENT;
+				break;
+			case 400:
+				httpStatus = HttpStatus.BAD_REQUEST;
+				break;
+			case 404:
+				httpStatus = HttpStatus.NOT_FOUND;
+				break;
+			default:
+				httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+				break;
+			}
+		} catch (Exception ex) {
+			log.error("saveEthernetOrder-Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to save ethernet order Reason : " + ex.getMessage());
+		}
+		log.info("<= saveEthernetOrder(): END");
+		return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@PostMapping(value = "/v1/saveEVCOrderInfo", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> saveEVCOrderInfo(@RequestBody Map<String, Object> orderInfo) {
+		log.info("=> saveEVCOrderInfo(): START");
+		log.info(" Save EVC Order Info : '{}'", orderInfo.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		HttpStatus httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+		responseStatus.setMessage("Failed");
+
+		try {
+			responseStatus = ethOrderSrvc.saveEVCOrderInfo(orderInfo);
+			switch (responseStatus.getCode()) {
+			case 200:
+				httpStatus = HttpStatus.OK;
+				break;
+			case 204:
+				httpStatus = HttpStatus.NO_CONTENT;
+				break;
+			case 400:
+				httpStatus = HttpStatus.BAD_REQUEST;
+				break;
+			case 404:
+				httpStatus = HttpStatus.NOT_FOUND;
+				break;
+			default:
+				httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+				break;
+			}
+		} catch (Exception ex) {
+			log.error("saveEVCOrderInfo-Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to save ethernet order Reason : " + ex.getMessage());
+		}
+		log.info("<= saveEVCOrderInfo(): END");
+		return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@PostMapping(value = "/v1/setUNIStatus", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> setUNIStatus(@RequestBody Map<String, Object> assignedInventoryBody) {
+		log.info("=> setUNIStatus (): START");
+		log.info(" Update UNI Circuit Status : '{}'", assignedInventoryBody.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+		
+		 // Set circuitType as UNI
+	    assignedInventoryBody.put("circuitType", "UNI");
+
+		// Validate the request
+		ResponseEntity<String> validationResponse = validator.validate(assignedInventoryBody);
+		if (validationResponse != null) {
+			responseStatus.setCode(HttpStatus.BAD_REQUEST.value());
+			responseStatus.setMessage(validationResponse.getBody());
+			return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.BAD_REQUEST.value()));
+		}
+		try {
+			responseStatus = ethOrderSrvc.setCircuitStatus(assignedInventoryBody);
+		} catch (Exception ex) {
+			log.error("setUNIStatus -Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to update UNI Circuit status Reason : " + ex.getMessage());
+		}
+		log.info("<= setUNIStatus (): END");
+		HttpStatus httpStatus;
+	    switch (responseStatus.getCode()) {
+	        case 200:
+	            httpStatus = HttpStatus.OK;
+	            break;
+	        case 400:
+	            httpStatus = HttpStatus.BAD_REQUEST;
+	            break;
+	        case 404:
+	            httpStatus = HttpStatus.NOT_FOUND;
+	            break;
+	        default:
+	            httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+	            break;
+	    }
+	    return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@PostMapping(value = "/v1/setEVCStatus", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> setEVCStatus(@RequestBody Map<String, Object> assignedInventoryBody) {
+		log.info("=> setEVCStatus (): START");
+		log.info(" Update EVC Circuit Status : '{}'", assignedInventoryBody.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+		
+		 // Set circuitType as EVC
+	    assignedInventoryBody.put("circuitType", "EVC");
+
+		// Validate the request
+		ResponseEntity<String> validationResponse = validator.validate(assignedInventoryBody);
+		if (validationResponse != null) {
+			responseStatus.setCode(HttpStatus.UNPROCESSABLE_ENTITY.value());
+			responseStatus.setMessage(validationResponse.getBody());
+			return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.BAD_REQUEST.value()));
+		}
+		try {
+			responseStatus = ethOrderSrvc.setCircuitStatus(assignedInventoryBody);
+		} catch (Exception ex) {
+			log.error("setEVCStatus -Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to update EVC Circuit status Reason : " + ex.getMessage());
+		}
+		log.info("<= setEVCStatus (): END");
+		HttpStatus httpStatus;
+	    switch (responseStatus.getCode()) {
+	        case 200:
+	            httpStatus = HttpStatus.OK;
+	            break;
+	        case 400:
+	            httpStatus = HttpStatus.BAD_REQUEST;
+	            break;
+	        case 404:
+	            httpStatus = HttpStatus.NOT_FOUND;
+	            break;
+	        default:
+	            httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+	            break;
+	    }
+	    return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@PostMapping(value = "/v1/setDeviceStatus", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> setDeviceStatus(@RequestBody Map<String, Object> statusRequest) {
+		log.info("=> setDeviceStatus (): START");
+		log.info(" Update Device Status : '{}'", statusRequest.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+
+		// Validate the request
+		if(statusRequest == null || statusRequest.isEmpty()) {
+			responseStatus.setCode(HttpStatus.UNPROCESSABLE_ENTITY.value());
+			responseStatus.setMessage("DeviceName or status cannot be null or empty.");
+			return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.BAD_REQUEST.value()));
+		}
+
+		String deviceName = (String) statusRequest.get("deviceName");
+		String nodeId = (String) statusRequest.get("nodeId");
+		String baseHeci = (String) statusRequest.get("baseHeci");
+		String status = (String) statusRequest.get("status");
+
+		// Validate Device Name
+		if ((StringUtils.isBlank(deviceName)) || (StringUtils.isBlank(nodeId))
+				|| (StringUtils.isBlank(baseHeci))){
+			responseStatus.setCode(HttpStatus.UNPROCESSABLE_ENTITY.value());
+			responseStatus.setMessage("Device Name or baseHeci cannot be null or empty.");
+			return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.BAD_REQUEST.value()));
+		}
+
+		// Validate status
+		if (status == null ) {
+			responseStatus.setCode(HttpStatus.UNPROCESSABLE_ENTITY.value());
+			responseStatus.setMessage("Status cannot be null or empty.");
+			return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.BAD_REQUEST.value()));
+		}
+
+		try {
+			responseStatus = ethOrderSrvc.setDeviceStatus(statusRequest);
+		} catch (Exception ex) {
+			log.error("setDeviceStatus -Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to update Device status Reason : " + ex.getMessage());
+		}
+		log.info("<= setDeviceStatus (): END");
+		HttpStatus httpStatus;
+	    switch (responseStatus.getCode()) {
+	        case 200:
+	            httpStatus = HttpStatus.OK;
+	            break;
+	        case 400:
+	            httpStatus = HttpStatus.BAD_REQUEST;
+	            break;
+	        case 404:
+	            httpStatus = HttpStatus.NOT_FOUND;
+	            break;
+	        default:
+	            httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+	            break;
+	    }
+	    return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@PostMapping(value = "/v1/saveUNIOrder", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> saveUNIOrder(@RequestBody Map<String, Object> orderInfo) {
+		log.info("=> saveUNIOrder(): START");
+		log.info(" Save UNI Order Info : '{}'", orderInfo.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+
+		try {
+			responseStatus = ethOrderSrvc.saveUNIOrderInfo(orderInfo);
+		}catch(Exception ex) {
+			log.error("saveUNIOrder-Caught Exception:- '{}'",ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to save UNI order Reason : " + ex.getMessage());
+		}
+		log.info("<= saveUNIOrder(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+	
+	@GetMapping("v1/getUNIOrderInfo")
+	public ResponseEntity<?> getUNIOrderInfo(@RequestParam(value = "isCircuit", required = true) boolean isCircuit,
+			@RequestParam(value = "searchKey", required = true) String searchKey) {
+
+		log.info("=>getUNIOrderInfo(): START");
+		try {
+			if (StringUtils.isBlank(searchKey)) {
+				String msgStr = "Empty searchKey or searchValue is not allowed!";
+				log.error("Failed: '{}'", msgStr);
+				return new ResponseEntity<>(Map.of("code", 422, "message", msgStr), HttpStatus.UNPROCESSABLE_ENTITY);
+			}
+			return ethOrderSrvc.getUNIOrderInfo(searchKey, isCircuit);
+
+		} catch (Exception ex) {
+			log.error("Get UNIOrder Info - Caught Exception: '{}'", ex.getMessage(), ex);
+			return new ResponseEntity<>(Map.of("code", 500, "message", "Failed : " + ex.getMessage()),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		} finally {
+			log.info("<=getUNIOrderInfo(): END");
+		}
+	}
+
+	@GetMapping("v1/getEthernetOrderInfo")
+    public ResponseEntity<?> getEthernetOrderInfo(@RequestParam(value = "orderNumber", required = true) String orderNumber) {
+		log.info("=>getEthernetOrderInfo(): START");
+		log.info("Get Ethernet Order Info for : '{}'", orderNumber);
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setCode(500);
+		responseStatus.setMessage("Failed");
+
+		try {
+			if (StringUtils.isBlank(orderNumber)) {
+				String msgStr = "Empty orderNumber is not allowed!";
+				log.error("Failed: '{}'",msgStr);
+				responseStatus.setCode(HttpStatus.UNPROCESSABLE_ENTITY.value());
+				responseStatus.setMessage(msgStr);
+			}else {
+				responseStatus = ethOrderSrvc.getEthOrderInfo(orderNumber);
+			}
+		}catch(Exception ex) {
+			log.error("Get Ethernet Order info -Caught Exception:- '{}'",ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed : " + ex.getMessage());
+		}
+		log.info("<=getEthernetOrderInfo(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+
+	@PostMapping(value = "/v1/disconnectUNI", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> disconnectUNI(@RequestBody Map<String, Object> uniInfo) {
+		log.info("=> disconnectUNI(): START");
+		log.info("Input : '{}'", uniInfo.toString());
+
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+
+		try {
+			boolean hardDisconnect = uniInfo.get("hardDisconnect") != null && (Boolean) uniInfo.get("hardDisconnect");
+			if (hardDisconnect) {
+				responseStatus = ethOrderSrvc.hardDisconnectUNI(uniInfo);
+			} else {
+				responseStatus = ethOrderSrvc.disconnectUNI(uniInfo);
+			}
+		} catch (Exception ex) {
+			log.error("disconnectOrDeleteUNI - Exception: '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Error occurred: " + ex.getMessage());
+		}
+
+		log.info("<= disconnectOrDeleteUNI(): END");
+		HttpStatus httpStatus;
+		switch (responseStatus.getCode()) {
+		case 200:
+			httpStatus = HttpStatus.OK;
+			break;
+		case 400:
+			httpStatus = HttpStatus.BAD_REQUEST;
+			break;
+		case 404:
+			httpStatus = HttpStatus.NOT_FOUND;
+			break;
+		case 207:
+			httpStatus = HttpStatus.MULTI_STATUS;
+			break;
+		default:
+			httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+			break;
+		}
+		return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@GetMapping(value = "/v1/getFiberConnectionInfo")
+	public ResponseEntity<?> getFiberConnectionInfo(@RequestParam(value = "clliA", required = true) String clliA,
+			@RequestParam(value = "clliZ", required = true) String clliZ,
+			@RequestParam(value = "cableName", required = false) String fiberName,
+			@RequestParam(value = "strandId", required = false) String strandId,
+			@RequestParam(value = "connectionNumber", required = true) int connNumber) {
+		log.info("=> getFiberConnectionInfo(): START");
+		log.info(" Fiber connection request for: '{}/{}/{},{}'", clliA, clliZ, fiberName, strandId);
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+		responseStatus.setCode(500);
+
+		try {
+			String errorMsg = "";
+			if (StringUtils.isBlank(clliA) == true) {
+				responseStatus.setMessage("Fibber CLLIA cannot be empty!.");
+			} else if (StringUtils.isBlank(clliZ) == true) {
+				responseStatus.setMessage("Fibber CLLIZ cannot be empty!.");
+			} else {
+				responseStatus = ethOrderSrvc.getFiberConnectionInfo(clliA, clliZ, fiberName, strandId,connNumber);
+				if (responseStatus.getCode() == 200) {
+					log.info("Successfully found Fiber Connection Info");
+				} else {
+					log.error("Failed to find Fiber Connection Info");
+				}
+			}
+
+		} catch (Exception ex) {
+			log.error("GetFiberConnectionInfo-Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to get Fiber Connection Info Reason : " + ex.getMessage());
+		}
+		log.info("<= getFiberConnectionInfo(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+
+	@GetMapping(value = "/v1/findRoute")
+	public ResponseEntity<?> findRoute(@RequestParam(value = "sourceDeviceName", required = true) String sourceDevName,
+			@RequestParam(value = "sourceNodeId", required = true) String sourceNodeId,
+			@RequestParam(value = "targetDeviceName", required = true) String targetDeviceName,
+			@RequestParam(value = "targetNodeId", required = true) String targetNodeId){
+		log.info("=> findRoute(): START");
+		log.info(" Find route from '{} to '{}'", sourceDevName, targetDeviceName);
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+		responseStatus.setCode(500);
+
+		try {
+			//responseStatus = ethOrderSrvc.findRoute(sourceDevName,sourceNodeId,targetDeviceName,targetNodeId);
+			responseStatus = ethOrderSrvc.findRouteV1(sourceDevName,targetDeviceName);
+		}catch(Exception ex) {
+			responseStatus.setMessage("Failed");
+			responseStatus.setCode(500);
+		}
+		log.info("<= findRoute(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+
+	@GetMapping(value = "/v1/findConnections")
+	public ResponseEntity<?> findConnections(@RequestParam(value = "sourceDeviceName", required = true) String sourceDevName,
+			@RequestParam(value = "targetDeviceName", required = true) String targetDeviceName){
+		log.info("=> findConnections(): START");
+		log.info(" Find connections from '{} to '{}'", sourceDevName, targetDeviceName);
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+		responseStatus.setCode(500);
+
+		try {
+			responseStatus = ethOrderSrvc.getConnections(sourceDevName,targetDeviceName);
+		}catch(Exception ex) {
+			responseStatus.setMessage("Failed");
+			responseStatus.setCode(500);
+		}
+		log.info("<= findConnections(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+
+	@PostMapping(value = "/v1/buildCustomerConnection", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> buildCustomerConnection(@RequestBody Map<String, Object> orderInfo) {
+		log.info("=> buildCustomerConnection(): START");
+		log.info(" Build Customer Connection Info : '{}'", orderInfo.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+ 
+		try {
+			responseStatus = ethOrderSrvc.buildCustConnection(orderInfo);
+		}catch(Exception ex) {
+			log.error("buildCustomerConnection-Caught Exception:- '{}'",ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to create Customer connection Reason : " + ex.getMessage());
+		}
+		log.info("<= buildCustomerConnection(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+	
+	@PostMapping(value = "/v1/disconnectEVC", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> disconnectEVC(@RequestBody Map<String, Object> evcInfo) {
+		log.info("=> disconnectEVC(): START");
+		log.info("Input : '{}'", evcInfo.toString());
+
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+
+		try {
+			boolean hardDisconnect = evcInfo.get("hardDisconnect") != null && (Boolean) evcInfo.get("hardDisconnect");
+			if (hardDisconnect) {
+				responseStatus = ethOrderSrvc.hardDisconnectEVC(evcInfo);
+			}
+		} catch (Exception ex) {
+			log.error("disconnectEVC - Exception: '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Error occurred: " + ex.getMessage());
+		}
+
+		log.info("<= disconnectEVC(): END");
+		HttpStatus httpStatus;
+		switch (responseStatus.getCode()) {
+		case 200:
+			httpStatus = HttpStatus.OK;
+			break;
+		case 400:
+			httpStatus = HttpStatus.BAD_REQUEST;
+			break;
+		case 404:
+			httpStatus = HttpStatus.NOT_FOUND;
+			break;
+		case 207:
+			httpStatus = HttpStatus.MULTI_STATUS;
+			break;
+		default:
+			httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+			break;
+		}
+		return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+	
+	@PostMapping(value = "/v1/findEVPLANRoutes")
+	public ResponseEntity<?> findEVPLANRoutes(@RequestBody Map<String, Object> devicesInfo){
+		log.info("=> findEVPLANRoutes(): START");
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+		responseStatus.setCode(500);
+
+		try {
+			responseStatus = ethOrderSrvc.findEVPLANRoutes(devicesInfo);
+		}catch(Exception ex) {
+			responseStatus.setMessage("Failed");
+			responseStatus.setCode(500);
+		}
+		log.info("<= findEVPLANRoutes(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+	
+	@PostMapping(value = "/v1/disconnectNNI", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> disconnectNNI(@RequestBody Map<String, Object> nniInfo) {
+		log.info("=> disconnectNNI(): START");
+		log.info("Input : '{}'", nniInfo.toString());
+
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+
+		try {
+			boolean hardDisconnect = nniInfo.get("hardDisconnect") != null && (Boolean) nniInfo.get("hardDisconnect");
+			if (hardDisconnect) {
+				responseStatus = ethOrderSrvc.hardDisconnectNNI(nniInfo);
+			}
+		} catch (Exception ex) {
+			log.error("disconnectNetworkConnection - Exception: '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Error occurred: " + ex.getMessage());
+		}
+
+		log.info("<= disconnectNNI(): END");
+		HttpStatus httpStatus;
+		switch (responseStatus.getCode()) {
+		case 200:
+			httpStatus = HttpStatus.OK;
+			break;
+		case 400:
+			httpStatus = HttpStatus.BAD_REQUEST;
+			break;
+		case 404:
+			httpStatus = HttpStatus.NOT_FOUND;
+			break;
+		case 207:
+	        httpStatus = HttpStatus.MULTI_STATUS;
+	        break;
+		default:
+			httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+			break;
+		}
+		return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+	@PostMapping(value = "/v1/createNmiInE2")
+	public ResponseEntity<?> createNmiInE2(@RequestParam(value = "circuit", required = false) String circuit) {
+	    log.info("=>createNmiInE2(): START");
+	    log.info("createNmiInE2: '{}'", circuit);
+
+	    if (StringUtils.isBlank(circuit)) {
+	        String msgStr = "Empty circuit name is not allowed.";
+	        log.error("Failed: '{}'", msgStr);
+	        return ResponseEntity.badRequest().body(Map.of("error", msgStr));
+	    }
+
+	    try {
+	        Map<String, Object> response = ethOrderSrvc.createNmiInE2(circuit);
+	        log.error("createNmiInE2 response: '{}'", response);
+	        return ResponseEntity.ok(response);
+	    }  catch (RuntimeException ex) {
+	        String message = ex.getMessage();
+	        log.error("Caught RuntimeException: {}", message, ex);
+
+	        if (message != null && message.contains("{") && message.contains("}")) {
+	            try {
+	                int start = message.indexOf("{");
+	                String jsonPart = message.substring(start);
+	                ObjectMapper mapper = new ObjectMapper();
+	                Map<String, String> errorMap = mapper.readValue(jsonPart, new TypeReference<>() {});
+	                String e2Message = errorMap.getOrDefault("message", "Unknown error");
+	                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+	                        .body(Map.of("error", "E2 Error: " + e2Message));
+	            } catch (Exception parseEx) {
+	                log.error("Failed to parse E2 error JSON: {}", message);
+	                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+	                        .body(Map.of("error", message));
+	            }
+	        } else {
+	            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+	                    .body(Map.of("error", message));
+	        }
+	    }
+
+	    catch (Exception ex) {
+	        log.error("Neo4j error in createNmiInE2('{}'): {}", ex.getMessage(), ex);
+	        throw new RuntimeException("Failed to createNmiInE2", ex);
+	    }finally {
+	        log.info("<=createNmiInE2(): END");
+	    }
+	}
+
+
+	@PostMapping(value = "/v1/removeUniFromEVPLAN", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> removeUniFromEVPLAN(@RequestBody Map<String, Object> evcInfo) {
+		log.info("=> removeUniFromEVPLAN(): START");
+		log.info("Input : '{}'", evcInfo.toString());
+
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+		responseStatus.setCode(500);
+
+		try {
+			String evcName = (String) evcInfo.get("evcName");
+			String uniName = (String) evcInfo.get("uniName");
+
+			if (StringUtils.isBlank(evcName)) {
+				responseStatus.setMessage("Failed. EVC Name should not be empty!");
+				responseStatus.setCode(400);
+			} else if (StringUtils.isBlank(uniName)) {
+				responseStatus.setMessage("Failed. UNI Circuit Name should not be empty!");
+				responseStatus.setCode(400);
+			}
+
+			responseStatus = ethOrderSrvc.removeUniFromEVPLAN(evcName, uniName);
+
+		} catch (Exception ex) {
+			log.error("removeUniFromEVPLAN - Exception: '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Error occurred: " + ex.getMessage());
+		}
+
+		log.info("<= removeUniFromEVPLAN(): END");
+		HttpStatus httpStatus;
+		switch (responseStatus.getCode()) {
+		case 200:
+			httpStatus = HttpStatus.OK;
+			break;
+		case 400:
+			httpStatus = HttpStatus.BAD_REQUEST;
+			break;
+		case 404:
+			httpStatus = HttpStatus.NOT_FOUND;
+			break;
+		default:
+			httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+			break;
+		}
+		return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@PostMapping(value = "/v1/createUNIInE2")
+	public ResponseEntity<ResponseStatus> createUNIInE2(
+	        @RequestParam(value = "circuit", required = false) String circuit) {
+
+	    log.info("=> createUNIInE2(): START");
+	    log.info("Received circuit: '{}'", circuit);
+
+	    if (StringUtils.isBlank(circuit)) {
+	        String msgStr = "Empty circuit name is not allowed.";
+	        log.error("Validation failed: '{}'", msgStr);
+
+	        ResponseStatus status = new ResponseStatus();
+	        status.setCode(400);
+	        status.setMessage(msgStr);
+	        return ResponseEntity.badRequest().body(status);
+	    }
+
+	    try {
+	        ResponseStatus response = ethOrderSrvc.createUNIInE2(circuit);
+
+	        if (response.getCode() == 200) {
+	            return ResponseEntity.ok(response);
+	        } else {
+	            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+	        }
+
+	    } catch (RuntimeException ex) {
+	        String errorMsg = "Error occurred while creating UNI in E2";
+	        log.error("{}: {}", errorMsg, ex.getMessage(), ex);
+
+	        ResponseStatus status = new ResponseStatus();
+	        status.setCode(500);
+	        status.setMessage(errorMsg + ": " + ex.getMessage());
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(status);
+	    }
+	}
+	
+	@PostMapping(value = "/v1/createEVCInE2")
+	public ResponseEntity<ResponseStatus> createEVCInE2(
+	        @RequestParam(value = "circuit", required = false) String circuit) {
+
+	    log.info("=> createEVCInE2(): START");
+	    log.info("Received circuit: '{}'", circuit);
+
+	    if (StringUtils.isBlank(circuit)) {
+	        String msgStr = "Empty circuit name is not allowed.";
+	        log.error("Validation failed: '{}'", msgStr);
+
+	        ResponseStatus status = new ResponseStatus();
+	        status.setCode(400);
+	        status.setMessage(msgStr);
+	        return ResponseEntity.badRequest().body(status);
+	    }
+
+	    try {
+	        ResponseStatus response = ethOrderSrvc.createEVCInE2(circuit);
+
+	        if (response.getCode() == 200) {
+	            return ResponseEntity.ok(response);
+	        } else {
+	            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+	        }
+
+	    } catch (RuntimeException ex) {
+	        String errorMsg = "Error occurred while creating EVC in E2";
+	        log.error("{}: {}", errorMsg, ex.getMessage(), ex);
+
+	        ResponseStatus status = new ResponseStatus();
+	        status.setCode(500);
+	        status.setMessage(errorMsg + ": " + ex.getMessage());
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(status);
+	    }
+	}
+	
+	@PostMapping(value = "/v1/deleteUNIInE2")
+	public ResponseEntity<ResponseStatus> deleteUNIInE2(
+	        @RequestParam(value = "circuit", required = false) String circuit) {
+
+	    log.info("=> deleteUNIInE2(): START");
+	    log.info("Received circuit: '{}'", circuit);
+
+	    if (StringUtils.isBlank(circuit)) {
+	        String msgStr = "Empty circuit name is not allowed.";
+	        log.error("Validation failed: '{}'", msgStr);
+
+	        ResponseStatus status = new ResponseStatus();
+	        status.setCode(400);
+	        status.setMessage(msgStr);
+	        return ResponseEntity.badRequest().body(status);
+	    }
+
+	    try {
+	        ResponseStatus response = ethOrderSrvc.deleteUNIInE2(circuit);
+
+	        if (response.getCode() == 200) {
+	            return ResponseEntity.ok(response);
+	        } else {
+	            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+	        }
+
+	    } catch (RuntimeException ex) {
+	        String errorMsg = "Error occurred while deleting UNI in E2";
+	        log.error("{}: {}", errorMsg, ex.getMessage(), ex);
+
+	        ResponseStatus status = new ResponseStatus();
+	        status.setCode(500);
+	        status.setMessage(errorMsg + ": " + ex.getMessage());
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(status);
+	    }
+	}
+	
+	@PostMapping(value = "/v1/deleteEVCInE2")
+	public ResponseEntity<ResponseStatus> deleteEVCInE2(
+			@RequestParam(value = "circuit", required = false) String circuit) {
+
+		log.info("=> deleteEVCInE2(): START");
+		log.info("Received circuit: '{}'", circuit);
+
+		if (StringUtils.isBlank(circuit)) {
+			String msgStr = "Empty circuit name is not allowed.";
+			log.error("Validation failed: '{}'", msgStr);
+
+			ResponseStatus status = new ResponseStatus();
+			status.setCode(400);
+			status.setMessage(msgStr);
+			return ResponseEntity.badRequest().body(status);
+		}
+
+		try {
+			ResponseStatus response = ethOrderSrvc.deleteEVCInE2(circuit);
+
+			if (response.getCode() == 200) {
+				return ResponseEntity.ok(response);
+			} else {
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+			}
+
+		} catch (RuntimeException ex) {
+			String errorMsg = "Error occurred while deleting EVC in E2";
+			log.error("{}: {}", errorMsg, ex.getMessage(), ex);
+
+			ResponseStatus status = new ResponseStatus();
+			status.setCode(500);
+			status.setMessage(errorMsg + ": " + ex.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(status);
+		}
+	}
+	
+	@PostMapping(value = "/v1/deleteNNIInE2")
+	public ResponseEntity<ResponseStatus> deleteNNIInE2(
+			@RequestParam(value = "circuit", required = false) String circuit) {
+
+		log.info("=> deleteNNIInE2(): START");
+		log.info("Received circuit: '{}'", circuit);
+
+		if (StringUtils.isBlank(circuit)) {
+			String msgStr = "Empty circuit name is not allowed.";
+			log.error("Validation failed: '{}'", msgStr);
+
+			ResponseStatus status = new ResponseStatus();
+			status.setCode(400);
+			status.setMessage(msgStr);
+			return ResponseEntity.badRequest().body(status);
+		}
+
+		try {
+			ResponseStatus response = ethOrderSrvc.deleteNNIInE2(circuit);
+
+			if (response.getCode() == 200) {
+				return ResponseEntity.ok(response);
+			} else {
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+			}
+
+		} catch (RuntimeException ex) {
+			String errorMsg = "Error occurred while deleting NNI in E2";
+			log.error("{}: {}", errorMsg, ex.getMessage(), ex);
+
+			ResponseStatus status = new ResponseStatus();
+			status.setCode(500);
+			status.setMessage(errorMsg + ": " + ex.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(status);
+		}
+	}
+	
+	@PostMapping(value = "/v1/updateNPEInfo", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> updateNPEInfo(@RequestBody Map<String, Object> deviceInfo) {
+		log.info("=> updateNPEInfo(): START");
+		log.info("Input : '{}'", deviceInfo.toString());
+
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+
+		try {
+			responseStatus = ethOrderSrvc.updateNPEInfo(deviceInfo);
+		} catch (Exception ex) {
+			log.error("updateNPEInfo - Exception: '{}'", ex.getMessage(), ex);
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Unexpected error while updating NPE info: " + ex.getMessage());
+		}
+
+		log.info("<= updateNPEInfo(): END");
+
+		HttpStatus httpStatus;
+		switch (responseStatus.getCode()) {
+		case 200:
+			httpStatus = HttpStatus.OK;
+			break;
+		case 204:
+			httpStatus = HttpStatus.NO_CONTENT;
+			break;
+		case 400:
+			httpStatus = HttpStatus.BAD_REQUEST;
+			break;
+		case 404:
+			httpStatus = HttpStatus.NOT_FOUND;
+			break;
+		default:
+			httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+			break;
+		}
+		return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@GetMapping(value = "/v1/getUniBandwidth")
+	public ResponseEntity<?> getUniBandwidth(@RequestParam(value = "circuitName", required = true) String circuitName){
+		log.info("=> getUniBandwidth(): START");
+		log.info(" Get bandwdith of uni : '{}'", circuitName);
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+		responseStatus.setCode(500);
+
+		try {
+			responseStatus = ethOrderSrvc.getUniBandwdith(circuitName);
+		}catch(Exception ex) {
+			responseStatus.setMessage("Failed");
+			responseStatus.setCode(500);
+		}
+		log.info("<= getUniBandwidth(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+	
+	@PostMapping(value = "/v1/saveUNIChangeOrder", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> saveUNIChangeOrder (@RequestBody Map<String, Object> orderInfo) {
+		log.info("=> saveUNIChangeOrder (): START");
+		log.info(" Save UNIChange Order Info : '{}'", orderInfo.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		HttpStatus httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+		responseStatus.setMessage("Failed");
+
+		try {
+			responseStatus = ethOrderSrvc.saveUNIChangeOrder(orderInfo);
+			switch (responseStatus.getCode()) {
+			case 200:
+				httpStatus = HttpStatus.OK;
+				break;
+			case 204:
+				httpStatus = HttpStatus.NO_CONTENT;
+				break;
+			case 400:
+				httpStatus = HttpStatus.BAD_REQUEST;
+				break;
+			case 404:
+				httpStatus = HttpStatus.NOT_FOUND;
+				break;
+			default:
+				httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+				break;
+			}
+		} catch (Exception ex) {
+			log.error("saveUNIChangeOrder-Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to save UNIChange order Reason : " + ex.getMessage());
+		}
+		log.info("<= saveUNIChangeOrder(): END");
+		return new ResponseEntity<>(responseStatus, httpStatus);
+	}
+
+	@PostMapping(value = "/v1/saveEVCChangeOrder", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> saveEVCChangeOrder(@RequestBody Map<String, Object> orderInfo) {
+		log.info("=> saveEVCChangeOrder(): START");
+		log.info(" Save EVC Change Order Info : '{}'", orderInfo.toString());
+		ResponseStatus responseStatus = new ResponseStatus();
+		HttpStatus httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+		responseStatus.setMessage("Failed");
+
+		try {
+			responseStatus = ethOrderSrvc.saveEVCChangeOrderInfo(orderInfo);
+			switch (responseStatus.getCode()) {
+			case 200:
+				httpStatus = HttpStatus.OK;
+				break;
+			case 204:
+				httpStatus = HttpStatus.NO_CONTENT;
+				break;
+			case 400:
+				httpStatus = HttpStatus.BAD_REQUEST;
+				break;
+			case 404:
+				httpStatus = HttpStatus.NOT_FOUND;
+				break;
+			default:
+				httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+				break;
+			}
+		} catch (Exception ex) {
+			log.error("saveEVCChangeOrder-Caught Exception:- '{}'", ex.getMessage());
+			responseStatus.setCode(500);
+			responseStatus.setMessage("Failed to save ethernet order Reason : " + ex.getMessage());
+		}
+		log.info("<= saveEVCChangeOrder(): END");
+		return new ResponseEntity<>(responseStatus, httpStatus);
+	
+	@PostMapping(value = "/v1/validateEVCSpeed",consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> validateEVCSpeed(@RequestBody Map<String, Object> validateRquest){
+		log.info("=> validateEVCSpeed(): START");
+		ResponseStatus responseStatus = new ResponseStatus();
+		responseStatus.setMessage("Failed");
+		responseStatus.setCode(500);
+
+		if (validateRquest == null || validateRquest.isEmpty()) {
+			ResponseStatus badRequestResponse = new ResponseStatus();
+			badRequestResponse.setCode(400);
+			badRequestResponse.setMessage("Bad request: Request body is missing or empty.");
+			return new ResponseEntity<>(badRequestResponse, HttpStatus.BAD_REQUEST);
+		}
+
+
+		try {
+			responseStatus = ethOrderSrvc.validateEVCSpeed(validateRquest);
+		}catch(Exception ex) {
+			responseStatus.setMessage("Failed");
+			responseStatus.setCode(500);
+		}
+		log.info("<= validateEVCSpeed(): END");
+		return new ResponseEntity<>(responseStatus, HttpStatus.valueOf(HttpStatus.OK.value()));
+	}
+}

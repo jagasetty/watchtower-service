@@ -1,0 +1,409 @@
+spring:
+  application:
+    name: usil-ethernetorder-service
+  neo4j:
+    authentication:
+      password: QkgHe1Q1UJrf7MVOsgXsK3mrQzm7EG6-zwcAB4XwxC4
+      username: neo4j
+    uri: neo4j+s://36520827.production-orch-0189.neo4j.io
+  #cloud:
+  # stream:
+  #  kafka:
+  #   binder:
+  #    brokers: ${kafkaBroker}
+  kafka:
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      retries-config: 5
+      retry-backoff-ms-config: 1000
+      acks-config: all
+      linger-ms-config: 500
+    properties:
+      bootstrap:
+        servers: pkc-9dd5v.us-east4.gcp.confluent.cloud:9092
+      sasl:
+        jaas:
+          config: org.apache.kafka.common.security.plain.PlainLoginModule   required username='${kafkaUsername}' password='${kafkaPassword}';
+        mechanism: PLAIN
+      security:
+        protocol: SASL_SSL
+      session:
+        timeout:
+          ms: 45000
+springfox.documentation.swagger-ui.enabled: true
+spring.mvc.pathmatch.matching-strategy: ANT_PATH_MATCHER
+server.servlet.context-path: /ethernet
+management.endpoints.web.exposure.include: "*"
+server:
+  port: 8085
+rest:
+ e2-etrace-url: https://api-ut.brightspeed.com/e2edc-uat-v1/equipment/getETraceV1
+ e2-nmi-creation-url: https://api-ut.brightspeed.com/e2edc-uat-v1/circuit/postckid
+ e2-uni-creation-url: https://api-ut.brightspeed.com/e2edc-uat-v1/logicalservices/saveLogicalUni
+ e2-getlogicaluni-url: https://api-ut.brightspeed.com/e2edc-uat-v1/logicalservices/getLogicalUni
+ e2-evc-creation-url:  https://api-ut.brightspeed.com/e2edc-uat-v1/logicalservices/postLogicalEVCByReference
+ e2-deleteuni-url: https://api-ut.brightspeed.com/e2edc-uat-v1/logicalservices/deleteUniEp
+ e2-deleteevc-url: https://api-ut.brightspeed.com/e2edc-uat-v1/logicalservices/deleteLogicalEvcObjectRetain
+ e2-deletenni-url: https://api-ut.brightspeed.com/e2edc-uat-v1/circuit/DeleteCkid
+ e2-getecktid-url: https://api-ut.brightspeed.com/e2edc-uat-v1/circuit/getEckid
+ e2-getevc-url: https://api-ut.brightspeed.com/e2edc-uat-v1/logicalservices/serviceDetails
+ e2-getnni-url: https://api-ut.brightspeed.com/e2edc-uat-v1/circuit/getEckid
+
+ nni:
+   api:
+     url: http://localhost:8080/assurance/createconnection/createNetworkConnection
+   update:
+     url: http://localhost:8080/assurance/createconnection/updateNNIConnection
+ uni:
+   api:
+     url: http://localhost:8080/assurance/createconnection/createUNIConnection
+   update:
+     url: http://localhost:8080/assurance/createconnection/updateUNIConnection
+
+ uniconnection: 
+  default:
+    serviceType: "MEF UNI"
+    cktfmt: "S"
+    noOfEVCs_OVCsAllowed: 4096
+    autoNegotiate: "N"
+    subcriberType: "Generic Subscriber"
+    status: "Planned"
+    bundling: "N"
+    allTo1Bundling: "Y"
+    requestingAffiliate: "BRIGHTSPEED"
+    functionalStatus: "Monitored"
+    MCO: "GNVLNCXAA01"
+--- 
+spring:
+  profiles: dev
+  cloud:
+    stream:
+      bindings:
+        onCustomer360-AddressFeedUpdate-out-0:
+          destination: DEV_CUSTOMER360_FEED_UPDATE
+        onIQGEO-TerminalChange-out-0:
+          destination: DEV_BOSS_OF_DROP_TERMINAL_CHANGE_REQ
+        onCustomer360IqGeoInfoResponse-out-0:
+          destination: DEV_BOSS_CUSTOMER360
+        onCustomer360-SNAPSHOT-out-0:
+          destination: Dev_PreProvisionComplete
+  kafka:
+    consumer:
+      group-id: DEV_USIL_INVENTORY_FEED_GRP
+      topic:
+        onUSILMessage: DEV_USIL_INVENTORY_FEED
+brightspeed:
+  subscribe:
+    topic:
+      onSTAGMessage: DEV_BOSS_INVENTORYAPI_ACTION_REPLY
+rest:
+  smx:
+    device-info:
+      uri: https://ngt-test-calixsmx.brightspeed.com:9137/rest/v1/config/device/{oltClli}/vlan?limit=200
+    signal-info:
+      uri: https://ge4apsmxpr01.brightspeedbroadband.net:18443/rest/v1/performance/device/{deviceId}/ont/{ontId}/status?refresh=true
+    auth:
+      smxUser: smxInfoUser
+      smxPwd: smxInfoPwd
+  brspd:
+    inventory:
+      auth:
+        uri: https://api-dv.brightspeed.com/oauth/client_credential/accesstoken?grant_type=client_credentials
+        authUser: inventoryApigeeUser
+        authPwd: inventoryApigeePwd
+        caseUser: inventoryApigeeUser
+        casePwd: inventoryApigeePwd
+      c360:
+        uri: https://api-dev.brightspeed.com/c360/v1/graphql
+      e2:
+       auth:
+         uri: https://api-ut.brightspeed.com/oauth/client_credential/accesstoken?grant_type=client_credentials
+         authUser: 'VYdwilKcogoW3FJBgXbLVrdiRCgBIKtyLANcGogaaF4W6J1Y'
+         authPwd: 'XyySGYPRFg3NsB7mTCAA0Iks7DKBBMTdMZcyL5SBDDUWFVI5Clzdh8IDVtliDSXn'
+      maestro:
+        auth:
+          uri: https://api-dev.gobrightspeed.net/oauth/client_credential/accesstoken?grant_type=client_credentials
+          authUser: yUn0UyHUfZMBjsUt7AwDN4GEG9c6GMgKZGCAUkyo2Gkhxb5H
+          authPwd: 9JDP9Zy5cveVB1Js7LEkGMzm7UIdGgZyX1TVxwd5EF2OkgomWLzMaVmFrwzBNtWm
+    line-record:
+      address:
+        fetch-uri: https://api-dev.brightspeed.com/line-record-service/v3/nps/linerecord/address-id/
+        update-uri: https://api-dev.brightspeed.com/line-record-service/v3/nps/linerecord/update/address/newterminal
+    case-create:
+      uri: https://api-dev.brightspeed.com/api/case/create
+  sqe:
+    address-info:
+      uri: https://api-dev.brightspeed.com/v2/sqe-gw/customer
+      amsAuthUsername: uFAMPXyphbNXmQcAbYC1PYgPbpw0Y4JU
+      amsAuthPassword: AFOzgY4SvgtDjIo0
+  order:
+    revision:
+      uri: https://brightspeedtsmnonprod1.service-now.com/api/sn_ind_tmt_orm/order/productOrder/orderNum/{orderId}
+      ormUsername: uFAMPXyphbNXmQcAbYC1PYgPbpw0Y4JU
+      ormPassword: AFOzgY4SvgtDjIo0
+  e2-etrace-url: https://api-ut.brightspeed.com/e2edc-uat-v1/equipment/getETraceV1 
+  nni:
+    api:
+       url: https://api-dv.brightspeed.com/usil/assurance/createconnection/createNetworkConnection
+    update:
+       url: https://api-dv.brightspeed.com/usil/assurance/createconnection/updateNNIConnection
+  uni:
+    api:
+       url: https://api-dv.brightspeed.com/usil/assurance/createconnection/createUNIConnection
+    update:
+       url: https://api-dv.brightspeed.com/usil/assurance/createconnection/updateUNIConnection
+
+  maestro:
+    vlanAvailability:
+      url: https://api-dev.gobrightspeed.net/e2e/inventory/vlans/check-availability
+    bandwidthAvailability:
+      url: https://api-dev.gobrightspeed.net/e2e/inventory/bandwidth/check-availability
+    serviceAvailability:
+      url: https://api-dev.gobrightspeed.net/e2e/inventory/service/check-availability
+--- 
+google:
+  cloud:
+    bigquery:
+      credentials:
+        location:  ${GKE_SA_DEV2_KEY}
+        projectId: ${GKE_PROJECT_DEV2}
+--- 
+spring:
+  profiles: uat
+  cloud:
+    stream:
+      bindings:
+        onCustomer360-AddressFeedUpdate-out-0:
+          destination: UAT_CUSTOMER360_FEED_UPDATE
+        onIQGEO-TerminalChange-out-0:
+          destination: UAT_BOSS_OF_DROP_TERMINAL_CHANGE_REQ
+        onCustomer360IqGeoInfoResponse-out-0:
+          destination: UAT_BOSS_CUSTOMER360
+        onCustomer360-SNAPSHOT-out-0:
+          destination: UAT_BOSS_PREPROVISIONCOMPLETE
+  kafka:
+    consumer:
+      group-id: UAT_USIL_INVENTORY_FEED_GRP
+      topic:
+        onUSILMessage: UAT_USIL_INVENTORY_FEED
+brightspeed:
+  subscribe:
+    topic:
+      onSTAGMessage: UAT_BOSS_INVENTORYAPI_ACTION_REPLY
+rest:
+  smx:
+    device-info:
+      uri: https://ngt-test-calixsmx.brightspeed.com:9137/rest/v1/config/device/{oltClli}/vlan?limit=200
+    signal-info:
+      uri: https://ge4apsmxpr01.brightspeedbroadband.net:18443/rest/v1/performance/device/{deviceId}/ont/{ontId}/status?refresh=true
+    auth:
+      smxUser: ${smxInfoUser}
+      smxPwd: ${smxInfoPwd}
+  brspd:
+    inventory:
+      auth:
+        uri: https://api-ut.brightspeed.com/oauth/client_credential/accesstoken?grant_type=client_credentials
+        authUser: ${assuranceApigeeUser}
+        authPwd: ${assuranceApigeePwd}
+        caseUser: ${assuranceApigeeUser}
+        casePwd: ${assuranceApigeePwd}
+      c360:
+        uri: https://api-ut.brightspeed.com/c360/v1/graphql
+      e2:
+       auth:
+          uri: https://api-ut.brightspeed.com/oauth/client_credential/accesstoken?grant_type=client_credentials
+          authUser: 'VYdwilKcogoW3FJBgXbLVrdiRCgBIKtyLANcGogaaF4W6J1Y'
+          authPwd: 'XyySGYPRFg3NsB7mTCAA0Iks7DKBBMTdMZcyL5SBDDUWFVI5Clzdh8IDVtliDSXn'
+      maestro:
+        auth:
+          uri: https://api-dev.gobrightspeed.net/oauth/client_credential/accesstoken?grant_type=client_credentials
+          authUser: yUn0UyHUfZMBjsUt7AwDN4GEG9c6GMgKZGCAUkyo2Gkhxb5H
+          authPwd: 9JDP9Zy5cveVB1Js7LEkGMzm7UIdGgZyX1TVxwd5EF2OkgomWLzMaVmFrwzBNtWm
+    line-record:
+      address:
+        fetch-uri: https://api-ut.brightspeed.com/line-record-service/v3/nps/linerecord/address-id/
+        update-uri: https://api-ut.brightspeed.com/line-record-service/v3/nps/linerecord/update/address/newterminal
+    case-create:
+      uri: https://api-ut.brightspeed.com/api/case/create
+  sqe:
+    address-info:
+      uri: https://api-ut.brightspeed.com/v2/sqe-gw/customer
+      amsAuthUsername: ${amsAuthUsername}
+      amsAuthPassword: ${amsAuthPassword}
+  order:
+    revision:
+      uri: https://brightspeedtsmqa.service-now.com/api/sn_ind_tmt_orm/order/productOrder/orderNum/{orderId}
+      ormUsername: ${ormUsername}
+      ormPassword: ${ormPassword}
+  e2-etrace-url: https://api-ut.brightspeed.com/e2edc-uat-v1/equipment/getETraceV1
+  e2-nmi-creation-url: https://api-ut.brightspeed.com/e2edc-uat-v1/circuit/postckid
+  nni:
+    api:
+       url: https://api-ut.brightspeed.com/usil/assurance/createconnection/createNetworkConnection
+    update:
+       url: https://api-ut.brightspeed.com/usil/assurance/createconnection/updateNNIConnection
+  uni:
+    api:
+       url: https://api-ut.brightspeed.com/usil/assurance/createconnection/createUNIConnection
+    update:
+       url: https://api-ut.brightspeed.com/usil/assurance/createconnection/updateUNIConnection
+  maestro:
+    vlanAvailability:
+      url: https://api-dev.gobrightspeed.net/e2e/inventory/vlans/check-availability
+    bandwidthAvailability:
+      url: https://api-dev.gobrightspeed.net/e2e/inventory/bandwidth/check-availability
+    serviceAvailability:
+      url: https://api-dev.gobrightspeed.net/e2e/inventory/service/check-availability
+--- 
+spring:
+  profiles: qa
+  cloud:
+    stream:
+      bindings:
+        onCustomer360-AddressFeedUpdate-out-0:
+          destination: UAT_CUSTOMER360_FEED_UPDATE
+        onIQGEO-TerminalChange-out-0:
+          destination: UAT_BOSS_OF_DROP_TERMINAL_CHANGE_REQ
+        onCustomer360IqGeoInfoResponse-out-0:
+          destination: UAT_BOSS_CUSTOMER360
+        onCustomer360-SNAPSHOT-out-0:
+          destination: UAT_BOSS_PREPROVISIONCOMPLETE
+  kafka:
+    consumer:
+      group-id: UAT_USIL_INVENTORY_FEED_GRP
+      topic:
+        onUSILMessage: UAT_USIL_INVENTORY_FEED
+brightspeed:
+  subscribe:
+    topic:
+      onSTAGMessage: UAT_BOSS_INVENTORYAPI_ACTION_REPLY
+rest:
+  smx:
+    device-info:
+      uri: https://ngt-test-calixsmx.brightspeed.com:9137/rest/v1/config/device/{oltClli}/vlan?limit=200
+    signal-info:
+      uri: https://ge4apsmxpr01.brightspeedbroadband.net:18443/rest/v1/performance/device/{deviceId}/ont/{ontId}/status?refresh=true
+    auth:
+      smxUser: ${smxInfoUser}
+      smxPwd: ${smxInfoPwd}
+  brspd:
+    inventory:
+      auth:
+        uri: https://api-ut.brightspeed.com/oauth/client_credential/accesstoken?grant_type=client_credentials
+        authUser: ${assuranceApigeeUser}
+        authPwd: ${assuranceApigeePwd}
+        caseUser: ${assuranceApigeeUser}
+        casePwd: ${assuranceApigeePwd}
+      c360:
+        uri: https://api-ut.brightspeed.com/c360/v1/graphql
+      e2:
+       auth:
+          uri: https://api-ut.brightspeed.com/oauth/client_credential/accesstoken?grant_type=client_credentials
+          authUser: 'VYdwilKcogoW3FJBgXbLVrdiRCgBIKtyLANcGogaaF4W6J1Y'
+          authPwd: 'XyySGYPRFg3NsB7mTCAA0Iks7DKBBMTdMZcyL5SBDDUWFVI5Clzdh8IDVtliDSXn'
+    line-record:
+      address:
+        fetch-uri: https://api-ut.brightspeed.com/line-record-service/v3/nps/linerecord/address-id/
+        update-uri: https://api-ut.brightspeed.com/line-record-service/v3/nps/linerecord/update/address/newterminal
+    case-create:
+      uri: https://api-ut.brightspeed.com/api/case/create
+  sqe:
+    address-info:
+      uri: https://api-ut.brightspeed.com/v2/sqe-gw/customer
+      amsAuthUsername: ${amsAuthUsername}
+      amsAuthPassword: ${amsAuthPassword}
+  order:
+    revision:
+      uri: https://brightspeedtsmqa.service-now.com/api/sn_ind_tmt_orm/order/productOrder/orderNum/{orderId}
+      ormUsername: ${ormUsername}
+      ormPassword: ${ormPassword}
+  e2-etrace-url: https://api-ut.brightspeed.com/e2edc-uat-v1/equipment/getETraceV1
+  e2-nmi-creation-url: https://api-ut.brightspeed.com/e2edc-uat-v1/circuit/postckid
+  nni:
+    api:
+       url: https://api-ut.brightspeed.com/usil/assurance/createconnection/createNetworkConnection
+    update:
+       url: https://api-ut.brightspeed.com/usil/assurance/createconnection/updateNNIConnection
+  uni:
+    api:
+       url: https://api-ut.brightspeed.com/usil/assurance/createconnection/createUNIConnection
+    update:
+       url: https://api-ut.brightspeed.com/usil/assurance/createconnection/updateUNIConnection
+--- 
+spring:
+  profiles: prod
+  cloud:
+    stream:
+      bindings:
+        onCustomer360-AddressFeedUpdate-out-0:
+          destination: PROD_CUSTOMER360_FEED_UPDATE
+        onIQGEO-TerminalChange-out-0:
+          destination: PROD_BOSS_OF_DROP_TERMINAL_CHANGE_REQ
+        onCustomer360IqGeoInfoResponse-out-0:
+          destination: PROD_BOSS_CUSTOMER360
+        onCustomer360-SNAPSHOT-out-0:
+          destination: PROD_BOSS_PREPROVISIONCOMPLETE
+  kafka:
+    consumer:
+      group-id: PROD_BOSS_INVENTORY_STAX_CON_GRP
+brightspeed:
+  subscribe:
+    topic:
+      onSTAGMessage: PROD_BOSS_INVENTORYAPI_ACTION_REPLY
+
+rest:
+  smx:
+    device-info:
+      uri: https://smx.gobrightspeed.net/rest/v1/config/device/{oltClli}/vlan?limit=200
+    auth:
+      smxUser: ${smxInfoUser}
+      smxPwd: ${smxInfoPwd}
+  brspd:
+    inventory:
+      auth:
+        uri: https://api-pr.brightspeed.com/oauth/client_credential/accesstoken?grant_type=client_credentials
+        authUser: ${assuranceApigeeUser}
+        authPwd: ${assuranceApigeePwd}
+        caseUser: ${assuranceApigeeUser}
+        casePwd: ${assuranceApigeePwd}
+      c360:
+        uri: https://api-pr.brightspeed.com/c360/v1/graphql
+      e2:
+       auth:
+          uri: https://api-qa.brightspeed.com/oauth/client_credential/accesstoken?grant_type=client_credentials
+          authUser: 'VYdwilKcogoW3FJBgXbLVrdiRCgBIKtyLANcGogaaF4W6J1Y'
+          authPwd: 'XyySGYPRFg3NsB7mTCAA0Iks7DKBBMTdMZcyL5SBDDUWFVI5Clzdh8IDVtliDSXn'
+    line-record:
+      address:
+        fetch-uri: https://api-pr.brightspeed.com/line-record-service/v3/nps/linerecord/address-id/
+        update-uri: https://api-pr.brightspeed.com/line-record-service/v3/nps/linerecord/update/address/newterminal
+    case-create:
+      uri: https://api-pr.brightspeed.com/api/case/create
+  sqe:
+    address-info:
+      uri: https://api-pr.brightspeed.com/v2/sqe-gw/customer
+      amsAuthUsername: ${amsAuthUsername}
+      amsAuthPassword: ${amsAuthPassword}
+  order:
+    revision:
+      uri: https://brightspeedtsm.service-now.com/api/sn_ind_tmt_orm/order/productOrder/orderNum/{orderId}
+      ormUsername: ${ormUsername}
+      ormPassword: ${ormPassword}
+  e2-etrace-url: https://api-ut.brightspeed.com/e2edc-uat-v1/equipment/getETraceV1
+  e2-nmi-creation-url:
+  nni:
+    api:
+       url: https://api-pr.brightspeed.com/usil/assurance/createconnection/createNetworkConnection
+    update:
+       url: https://api-pr.brightspeed.com/usil/assurance/createconnection/updateNNIConnection
+  uni:
+    api:
+       url: https://api-pr.brightspeed.com/usil/assurance/createconnection/createUNIConnection
+    update:
+       url: https://api-pr.brightspeed.com/usil/assurance/createconnection/updateUNIConnection
+log:
+  url: C:/TIRKS/Logs/MigrationLogs
